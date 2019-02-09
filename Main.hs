@@ -1,8 +1,8 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Main where
 
-import Data.ByteString hiding (count, putStrLn)
-import Control.Monad
+import Data.ByteString (ByteString)
+import System.Environment (getArgs)
 
 data Expr
   = Int' Int
@@ -49,34 +49,35 @@ ln (Int' 1)              = Int' 0
 ln f                     = Ln' f
 
 d :: ByteString -> Expr -> Expr
-d x (Var' y) | x == y    = Int' 1
-d _ (Int' _)             = Int' 0
-d _ (Var' _)             = Int' 0
-d x (Add' f g)           = add (d x f) (d x g)
-d x (Mul' f g)           = add (mul f (d x g)) (mul g (d x f))
-d x (Pow' f g)           = mul (pow f g) (add (mul (mul g (d x f)) (pow f (Int' (-1)))) (mul (ln f) (d x g)))
-d x (Ln' f)              = mul (d x f) (pow f (Int' (-1)))
+d x (Var' y) | x == y  = Int' 1
+d _ (Int' _)           = Int' 0
+d _ (Var' _)           = Int' 0
+d x (Add' f g)         = add (d x f) (d x g)
+d x (Mul' f g)         = add (mul f (d x g)) (mul g (d x f))
+d x (Pow' f g)         = mul (pow f g) (add (mul (mul g (d x f)) (pow f (Int' (-1)))) (mul (ln f) (d x g)))
+d x (Ln' f)            = mul (d x f) (pow f (Int' (-1)))
 
 count :: Expr -> Int
-count (Int' _) = 1
-count (Var' _) = 1
-count (Add' f g) = count f + count g
-count (Mul' f g) = count f + count g
-count (Pow' f g) = count f + count g
-count (Ln' f) = count f
+count (Int' _)    = 1
+count (Var' _)    = 1
+count (Add' f g)  = count f + count g
+count (Mul' f g)  = count f + count g
+count (Pow' f g)  = count f + count g
+count (Ln' f)     = count f
 
-showExpr (Int' n) = show n
-showExpr (Var' x) = show x
-showExpr (Add' f g) = showExpr f <> " + " <> showExpr g
-showExpr (Mul' f g) = bracket 2 f <> "*" <> bracket 2 g
-showExpr (Pow' f g) = bracket 2 f <> "^" <> bracket 3 g
-showExpr (Ln' f) = "ln(" <> showExpr f <> ")"
+showExpr :: Expr -> String
+showExpr (Int' n)    = show n
+showExpr (Var' x)    = show x
+showExpr (Add' f g)  = showExpr f <> " + " <> showExpr g
+showExpr (Mul' f g)  = bracket 2 f <> "*" <> bracket 2 g
+showExpr (Pow' f g)  = bracket 2 f <> "^" <> bracket 3 g
+showExpr (Ln' f)     = "ln(" <> showExpr f <> ")"
 
 prec :: Expr -> Int
-prec (Pow' _ _) = 3
-prec (Mul' _ _) = 2
-prec (Add' _ _) = 1
-prec _          = 4
+prec (Pow' _ _)  = 3
+prec (Mul' _ _)  = 2
+prec (Add' _ _)  = 1
+prec _           = 4
 
 bracket :: Int -> Expr -> String
 bracket outer expr | outer > prec expr = "(" <> showExpr expr <> ")"
@@ -90,9 +91,7 @@ instance Show Expr where
 
 nest :: Int -> (a -> IO a) -> a -> IO a
 nest 0 _ x = return x
-nest n f x = do
-  a' <- f x
-  nest (n-1) f a'
+nest n f x = f x >>= nest (n - 1) f
 
 deriv :: Expr -> IO Expr
 deriv f = do
@@ -102,7 +101,7 @@ deriv f = do
 
 main :: IO ()
 main = do
+  n <- read . head <$> getArgs
   let x = Var' "x"
-  let f = pow x x
-  _ <- nest 10 deriv f
+  _ <- nest n deriv $ pow x x
   return ()
