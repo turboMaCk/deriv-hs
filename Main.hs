@@ -1,7 +1,8 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Main where
 
-import Data.ByteString hiding (count)
+import Data.ByteString hiding (count, putStrLn)
+import Control.Monad
 
 data Expr
   = Int' Int
@@ -10,15 +11,12 @@ data Expr
   | Mul' Expr Expr
   | Pow' Expr Expr
   | Ln' Expr
-  deriving (Show)
 
 pown :: Int -> Int -> Int
-pown a n =
-  case n of
-    0 -> 0
-    1 -> a
-    n -> b * b * (if n `mod` 2 == 0 then 1 else a)
-          where b = pown a (n `quot` 2)
+pown a n | n == 0 = 0
+         | n == 1 = a
+         | otherwise = b * b * (if n `mod` 2 == 0 then 1 else a)
+            where b = pown a (n `quot` 2)
 
 add, mul, pow :: Expr -> Expr -> Expr
 
@@ -33,6 +31,8 @@ add f g                  = Add' f g
 mul (Int' m) (Int' n)    = Int' (m * n)
 mul (Int' 0) _           = Int' 0
 mul _ (Int' 0)           = Int' 0
+mul (Int' 1) f           = f
+mul f (Int' 1)           = f
 mul f (Int' n)           = mul (Int' n) f
 mul f (Mul' (Int' n) g)  = mul (Int' n) (mul f g)
 mul (Mul' f g) h         = mul f (mul g h)
@@ -49,9 +49,9 @@ ln (Int' 1)              = Int' 0
 ln f                     = Ln' f
 
 d :: ByteString -> Expr -> Expr
-d x (Var' y) | x == y     = Int' 1
-d x (Int' _)             = Int' 0
-d x (Var' _)             = Int' 0
+d x (Var' y) | x == y    = Int' 1
+d _ (Int' _)             = Int' 0
+d _ (Var' _)             = Int' 0
 d x (Add' f g)           = add (d x f) (d x g)
 d x (Mul' f g)           = add (mul f (d x g)) (mul g (d x f))
 d x (Pow' f g)           = mul (pow f g) (add (mul (mul g (d x f)) (pow f (Int' (-1)))) (mul (ln f) (d x g)))
@@ -65,21 +65,44 @@ count (Mul' f g) = count f + count g
 count (Pow' f g) = count f + count g
 count (Ln' f) = count f
 
+showExpr (Int' n) = show n
+showExpr (Var' x) = show x
+showExpr (Add' f g) = showExpr f <> " + " <> showExpr g
+showExpr (Mul' f g) = bracket 2 f <> "*" <> bracket 2 g
+showExpr (Pow' f g) = bracket 2 f <> "^" <> bracket 3 g
+showExpr (Ln' f) = "ln(" <> showExpr f <> ")"
+
 prec :: Expr -> Int
 prec (Pow' _ _) = 3
 prec (Mul' _ _) = 2
 prec (Add' _ _) = 1
-prec _        = 4
+prec _          = 4
 
--- this might be nicer in HS
-nest :: Int -> (a -> a) -> a -> a
-nest 0 _ x = x
-nest n f x = nest (n-1) f (f x)
+bracket :: Int -> Expr -> String
+bracket outer expr | outer > prec expr = "(" <> showExpr expr <> ")"
+                   | otherwise = showExpr expr
+
+instance Show Expr where
+  show expr = let n = count expr in
+    if n > 100
+    then "<<" <> show n <> ">>"
+    else showExpr expr
+
+nest :: Int -> (a -> IO a) -> a -> IO a
+nest 0 _ x = return x
+nest n f x = do
+  a' <- f x
+  nest (n-1) f a'
+
+deriv :: Expr -> IO Expr
+deriv f = do
+  let d' = d "x" f
+  putStrLn $ "D(" <> show f <> ") = " <> show d'
+  return d'
 
 main :: IO ()
 main = do
   let x = Var' "x"
   let f = pow x x
-  let res = nest 2 (d "x") f
-  print $ res
-  --print $ pow (Int' 10) (mul (Int' 10) (Int' 5))
+  _ <- nest 10 deriv f
+  return ()
