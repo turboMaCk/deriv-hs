@@ -4,7 +4,7 @@ This is Haskell implementation of [Jon Harro]()'s [symbolic derivative benchmark
 It's almost straight forward reimplementation of [OCaml](https://gist.github.com/jdh30/f3d90a65a7abc7c9faf5c0299b002db3)
 version for Haskell. No fancy polymorphism, no Haskell specific optimizations.
 
-## Benchmark Comparison with OCaml
+## Benchmark Comparison with OCaml & Swift
 
 Benchmark was done on my desktop Ryzen 1800x system with 32GB DDR4 2133MHz RAM running NixOS Linux.
 
@@ -102,6 +102,36 @@ Compiled using `ocamlopt` with `-O3` optimization flag.
 	Minor (reclaiming a frame) page faults: 108169
 	Voluntary context switches: 1
 	Involuntary context switches: 2
+	Swaps: 0
+	File system inputs: 0
+	File system outputs: 0
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 0
+```
+
+### Swift
+
+Swift implementation is compiled using `swiftc` with `-O` optimization flag.
+
+```
+	Command being timed: "result/bin/deriv 10"
+	User time (seconds): 6.51
+	System time (seconds): 0.31
+	Percent of CPU this job got: 99%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 0:06.82
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 1574552
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 0
+	Minor (reclaiming a frame) page faults: 391662
+	Voluntary context switches: 1
+	Involuntary context switches: 4
 	Swaps: 0
 	File system inputs: 0
 	File system outputs: 0
