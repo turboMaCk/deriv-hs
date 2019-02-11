@@ -89,7 +89,7 @@ instance Show Expr where
     then "<<" <> show n <> ">>"
     else showExpr expr
 
-nest :: Int -> (a -> IO a) -> a -> IO a
+nest :: Monad m =>  Int -> (a -> m a) -> a -> m a
 nest 0 _ x = return x
 nest n f x = f x >>= nest (n - 1) f
 
